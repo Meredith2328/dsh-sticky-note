@@ -1,0 +1,4 @@
+# Install the Host half and expose the same package's dsh.client Web half.
+- insert:
+    - id: dsh-sticky-note
+      name: dsh-sticky-note
