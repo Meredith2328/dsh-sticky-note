@@ -1,6 +1,6 @@
 # dsh-sticky-note
 
-DSH（DeepSeek Harness）便签插件：在编辑框工具栏随手记点子 / 感想 / TODO，自动保存为 Markdown，一键发送到对话。
+左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
