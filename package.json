@@ -1,7 +1,7 @@
 {
   "name": "dsh-sticky-note",
   "description": "左下角便签：随手记点子/感想/TODO，实时保存到归档目录，清单+悬浮归档",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
