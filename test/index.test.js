@@ -127,6 +127,24 @@ describe('list 与自动清除', () => {
     const raw = JSON.parse(await readFile(join(HOME, 'sticky-note-retained.json'), 'utf8'))
     expect(raw).toEqual([])
   })
+  it('保留标记在 归档→清理→恢复 往返后依然豁免（回归）', async () => {
+    await handler('config', { clearAfter: 7 })
+    await writeNote('点子', '20260801-100000.md', '重要内容', 10)
+    await handler('retain', { kind: '点子', name: '20260801-100000.md', retain: true })
+    await handler('archive', { kind: '点子', name: '20260801-100000.md' })
+    // 归档期间清理跑了（list 触发 prune）：标记不能被当脏键删掉
+    await handler('list', {})
+    const raw = JSON.parse(await readFile(join(HOME, 'sticky-note-retained.json'), 'utf8'))
+    expect(raw).toContain('点子/20260801-100000.md')
+    // 恢复后 mtime 仍是 10 天前，但保留豁免 → 不进回收站，标记仍在
+    await handler('restore', { name: '点子-20260801-100000.md' })
+    const r = await handler('list', {})
+    const back = r.value.categories['点子'].find((x) => x.name === '20260801-100000.md')
+    expect(back).toBeTruthy()
+    expect(back.retained).toBe(true)
+    const trash = await readdir(join(ROOT, '已清除'))
+    expect(trash).not.toContain('20260801-100000.md')
+  })
 })
 
 describe('update', () => {
