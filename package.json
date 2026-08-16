@@ -3,6 +3,8 @@
   "description": "左下角便签：随手记点子/感想/TODO，实时保存到归档目录，清单+悬浮归档",
   "version": "0.2.1",
   "license": "MIT",
+  "author": "Meredith2328",
+  "email": "111104745+Meredith2328@users.noreply.github.com",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
