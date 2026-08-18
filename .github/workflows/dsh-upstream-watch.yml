@@ -1,0 +1,78 @@
+name: dsh-upstream-watch
+
+# 监控 @deepseek-ai/dsh 新版本：有新 release 时开 issue 通知（GitHub 会发邮件）。
+# 版本基线存在 .dsh-baseline 里，更新基线需提交回仓库。
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 每天 UTC 02:00（北京时间 10:00）
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: dsh-upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve latest dsh version
+        id: latest
+        run: |
+          set -eu
+          # npm dist-tag latest 优先（发版必经），GitHub release 作交叉印证输出
+          VER="$(npm view @deepseek-ai/dsh dist-tags.latest)"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=dsh-v$VER" >> "$GITHUB_OUTPUT"
+          RELEASE_URL="$(gh api repos/deepseek-ai/deepseek-harness/releases/tags/dsh-v$VER --jq .html_url || true)"
+          echo "release_url=${RELEASE_URL:-https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Compare with baseline
+        id: cmp
+        run: |
+          set -eu
+          BASELINE="$(cat .dsh-baseline 2>/dev/null || echo '')"
+          LATEST="${{ steps.latest.outputs.version }}"
+          echo "baseline=${BASELINE:-<none>}" >> "$GITHUB_OUTPUT"
+          if [ -n "$BASELINE" ] && [ "$BASELINE" = "$LATEST" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open notification issue
+        if: steps.cmp.outputs.changed == 'true'
+        run: |
+          set -eu
+          LATEST="${{ steps.latest.outputs.version }}"
+          BASELINE="${{ steps.cmp.outputs.baseline }}"
+          TITLE="DSH 新版本：@deepseek-ai/dsh@$LATEST（需适配检查）"
+          # 同版本只开一个 issue：带固定标记搜索
+          EXISTING="$(gh issue list --search "in:title $TITLE" --state open --json number --jq 'length')"
+          if [ "$EXISTING" = "0" ]; then
+            gh issue create --title "$TITLE" --body "$(cat <<EOF
+          上游 \@deepseek-ai/dsh 发布了新版本，请检查插件兼容性并及时适配。
+
+          - 新版本：\`$LATEST\`（基线：\`${BASELINE}\`）
+          - Release：${{ steps.latest.outputs.release_url }}
+          - 本仓库插件：dsh-sticky-note（当前要求 DSH >= 0.1.0-rc.7）
+
+          上一次破坏性变更参考：rc.7 将 \`settings.plugin.item\` 改为 keyed slot（#36def03）。
+
+          适配完成后：把 \`.dsh-baseline\` 更新为 \`$LATEST\` 并提交，本工作流即恢复安静。
+          EOF
+          )"
+            echo "issue opened"
+          else
+            echo "issue already exists, skip"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
