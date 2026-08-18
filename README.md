@@ -33,6 +33,8 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 安装后重启 DSH（Web 或 Desktop）。
 
+**版本要求**：v0.2.2 起需要 DSH `0.1.0-rc.7` 及以上（设置卡片注册适配 keyed slot 强校验）；旧版 DSH 请使用 v0.2.1。
+
 ## 🗂️ 存储结构
 
 ```
