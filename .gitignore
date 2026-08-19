@@ -2,3 +2,5 @@ node_modules/
 lib/types/
 *.tsbuildinfo
 .DS_Store
+
+.mimosa/
