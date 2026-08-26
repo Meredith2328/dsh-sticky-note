@@ -1,0 +1,59 @@
+name: issue-diagnostics
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-diagnostics-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Test diagnostic parser
+        run: node --test .github/scripts/issue-diagnostics.node-test.mjs
+
+      - name: Run repository baseline
+        id: baseline
+        continue-on-error: true
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx --yes vitest@3.2.4 run test/index.test.js
+
+      - name: Build evidence report
+        env:
+          TEST_OUTCOME: ${{ steps.baseline.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node .github/scripts/issue-diagnostics.mjs "$GITHUB_EVENT_PATH" "$GITHUB_WORKSPACE" > issue-diagnostics.md
+
+      - name: Create or update diagnostic comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('node:fs')
+            const marker = '<!-- issue-diagnostics:v1 -->'
+            const body = fs.readFileSync('issue-diagnostics.md', 'utf8')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            })
+            const previous = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker))
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            }
