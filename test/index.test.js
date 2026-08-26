@@ -72,6 +72,30 @@ describe('save / new / clear / read', () => {
     expect((await handler('read', { kind: '点子', name: '../config.json' })).ok).toBe(false)
     expect((await handler('read', { kind: '点子', name: 'a/b.md' })).ok).toBe(false)
   })
+  it('保存时逐字节保留首尾空行', async () => {
+    await handler('new', {})
+    const content = '\n正文\n\n'
+    const s = await handler('save', { kind: '点子', content })
+    const r = await handler('read', { kind: '点子', name: s.value.name })
+    expect(r.value.content).toBe(content)
+  })
+  it('内容未变化时不重复写盘', async () => {
+    await handler('new', {})
+    const first = await handler('save', { kind: '点子', content: '不变' })
+    const second = await handler('save', { kind: '点子', content: '不变' })
+    expect(first.value.changed).toBe(true)
+    expect(second.value.changed).toBe(false)
+  })
+  it('并发保存后清空不会让旧草稿复活', async () => {
+    await handler('new', {})
+    const first = await handler('save', { kind: '点子', content: '旧内容' })
+    await Promise.all([
+      handler('save', { kind: '点子', content: '排队中的新内容' }),
+      handler('clear', {}),
+    ])
+    const read = await handler('read', { kind: '点子', name: first.value.name })
+    expect(read.ok).toBe(false)
+  })
 })
 
 describe('archive / restore', () => {
@@ -155,5 +179,13 @@ describe('update', () => {
     expect(u.ok).toBe(true)
     const r = await handler('read', { kind: 'TODO', name: s.value.name })
     expect(r.value.content.trim()).toBe('新')
+  })
+  it('更新时逐字节保留首尾空行', async () => {
+    await handler('new', {})
+    const s = await handler('save', { kind: 'TODO', content: '旧' })
+    const content = '\n新内容\n\n'
+    await handler('update', { kind: 'TODO', name: s.value.name, content })
+    const r = await handler('read', { kind: 'TODO', name: s.value.name })
+    expect(r.value.content).toBe(content)
   })
 })
