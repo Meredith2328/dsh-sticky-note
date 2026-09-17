@@ -1,10 +1,10 @@
 # dsh-sticky-note
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7_~_0.1.1--rc.2-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases)
+[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7_~_0.1.6--alpha.2-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.6-alpha.2)
 
 左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
-> 适配 DSH `0.1.0-rc.7` ~ `0.1.1-rc.2`：最低要求 `0.1.0-rc.7`（设置卡片 keyed slot 强校验），最高已验证 `0.1.1-rc.2`。
+> 适配 DSH `0.1.0-rc.7` ~ `0.1.6-alpha.2`：最低要求 `0.1.0-rc.7`（设置卡片 keyed slot 强校验），最高已验证 `0.1.6-alpha.2`。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
@@ -26,7 +26,7 @@
 ## 📦 安装
 
 ```sh
-dsh plugin --profile web add dsh-sticky-note
+dsh plugin --profile web add github:Meredith2328/dsh-sticky-note
 ```
 
 或本地目录：
@@ -37,7 +37,9 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 安装后重启 DSH（Web 或 Desktop）。
 
-**版本要求**：需要 DSH `0.1.0-rc.7` 及以上（设置卡片注册适配 keyed slot 强校验），已验证兼容至 `0.1.1-rc.2`；旧版 DSH 请使用 v0.2.1。v0.2.3 起 peerDependencies 范围放宽以覆盖 `0.1.1` 预发布系列（运行时本就兼容）。
+> 请不要使用裸包名 `dsh plugin ... add dsh-sticky-note`；npm 上的同名包不是本项目。
+
+**版本要求**：需要 DSH `0.1.0-rc.7` 及以上（设置卡片注册适配 keyed slot 强校验），已验证兼容至 `0.1.6-alpha.2`；旧版 DSH 请使用 v0.2.1。v0.2.4 移除了 `0.1.6` 已删除的 `settingsNamespace` 辅助函数，在顶层声明 Loader 必需服务，把设置卡片迁到新版插件详情页，并让定时清理跟随插件热卸载生命周期。
 
 ## 🗂️ 存储结构
 

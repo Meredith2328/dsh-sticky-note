@@ -7,9 +7,24 @@ import { join } from 'node:path'
 const HOME = await mkdtemp(join(tmpdir(), 'sn-test-'))
 process.env.DSH_HOME = HOME
 
-const { handler } = await import('../lib/index.js')
+const { handler, inject } = await import('../lib/index.js')
 
 const ROOT = join(HOME, 'notes')
+
+describe('DSH 插件声明', () => {
+  it('在顶层声明 0.1.6 Loader 需要的宿主服务', () => {
+    expect(inject).toEqual(['connection', 'settings'])
+  })
+  it('在浏览器包声明可见服务并使用新版目录选择服务', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).toContain("exports.inject = ['connection', 'slots', 'uiWorkspace']")
+    expect(source).toContain("ctx.get('uiWorkspace')")
+    expect(source).toContain("slots.inject('plugins.bundle.config'")
+    expect(source).toContain("key: 'dsh-sticky-note'")
+    expect(source).toContain("slots.inject('settings.plugin.item'")
+    expect(source).not.toContain("ctx.get('workspaces')")
+  })
+})
 
 async function writeNote(kind, name, content, mtimeDaysAgo = 0) {
   await mkdir(join(ROOT, kind), { recursive: true })
