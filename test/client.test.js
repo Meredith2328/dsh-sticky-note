@@ -63,6 +63,38 @@ describe('面板布局', () => {
     )).toEqual({ x: 916, y: 60, width: 280, height: 330 })
   })
 
+  it('按实际缩放尺寸夹紧位置并保持边缘吸附', () => {
+    expect(client.clampPanelLayout(
+      { x: 900, y: 4, width: 280, height: 330 },
+      { width: 1024, height: 768 },
+      150,
+    )).toEqual({ x: 600, y: 4, width: 280, height: 330 })
+    expect(client.snapPanelLayout(
+      { x: 850, y: 60, width: 280, height: 330 },
+      { width: 1200, height: 800 },
+      150,
+    )).toEqual({ x: 776, y: 60, width: 280, height: 330 })
+  })
+
+  it('缩放档位、边界和重置保持稳定', () => {
+    expect(client.parsePanelZoom(null)).toBe(100)
+    expect(client.parsePanelZoom('bad')).toBe(100)
+    expect(client.parsePanelZoom('116')).toBe(120)
+    expect(client.parsePanelZoom('200')).toBe(100)
+    expect(client.nextPanelZoom(100, 'in')).toBe(110)
+    expect(client.nextPanelZoom(80, 'out')).toBe(80)
+    expect(client.nextPanelZoom(150, 'in')).toBe(150)
+    expect(client.nextPanelZoom(130, 'reset')).toBe(100)
+  })
+
+  it('识别 macOS 与 Windows/Linux 缩放快捷键', () => {
+    expect(client.panelZoomCommand({ metaKey: true, ctrlKey: false, altKey: false, key: '+', code: 'Equal' })).toBe('in')
+    expect(client.panelZoomCommand({ metaKey: false, ctrlKey: true, altKey: false, key: '-', code: 'Minus' })).toBe('out')
+    expect(client.panelZoomCommand({ metaKey: false, ctrlKey: true, altKey: false, key: '0', code: 'Digit0' })).toBe('reset')
+    expect(client.panelZoomCommand({ metaKey: false, ctrlKey: false, altKey: false, key: '+', code: 'Equal' })).toBeNull()
+    expect(client.panelZoomCommand({ metaKey: true, ctrlKey: false, altKey: true, key: '+', code: 'Equal' })).toBeNull()
+  })
+
   it('默认未固定，固定状态从本地持久化恢复', async () => {
     const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
     expect(source).toContain("localStorage.getItem(PANEL_PINNED_KEY) === 'true'")
@@ -75,6 +107,14 @@ describe('面板布局', () => {
     expect(source).toContain("const [resumeDraft, setResumeDraft] = React.useState(false)")
     expect(source).toContain("rpc('draft', {})")
     expect(source).toContain("{ value: true, label: '继续上次草稿' }")
+  })
+
+  it('缩放默认 100%，只绑定在便签面板内部并持久化', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).toContain("localStorage.getItem(PANEL_ZOOM_KEY)")
+    expect(source).toContain('onKeyDownCapture: onPanelZoomKeyDown')
+    expect(source).toContain("localStorage.setItem(PANEL_ZOOM_KEY, String(next))")
+    expect(source).toContain("'aria-label': '重置便签缩放，当前 ' + zoom + '%'")
   })
 })
 
