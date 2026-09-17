@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { readFile } from 'node:fs/promises'
 
 let client
 let previousWindow
@@ -49,5 +50,16 @@ describe('面板布局', () => {
   it('损坏或越界的持久化数据回退到安全默认值', () => {
     expect(client.parsePanelLayout('{bad json')).toEqual({ x: null, y: null, width: 280, height: 330 })
     expect(client.parsePanelLayout('{"x":"bad","y":9,"width":0,"height":99999}')).toEqual({ x: null, y: null, width: 280, height: 330 })
+  })
+})
+
+describe('标题栏操作', () => {
+  it('标题禁止换行，操作默认收起并以浮层展开', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).toContain('.sn-head-title { flex: none; white-space: nowrap; }')
+    expect(source).toContain("const [headActionsOpen, setHeadActionsOpen] = React.useState(false)")
+    expect(source).toContain("className: 'sn-head-actions-pop'")
+    expect(source).toContain("'aria-label': '展开标题栏操作'")
+    expect(source).toContain('if (headActionsOpen) { setHeadActionsOpen(false); return }')
   })
 })
