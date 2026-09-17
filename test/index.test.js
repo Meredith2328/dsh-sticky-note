@@ -52,6 +52,7 @@ describe('config', () => {
     expect(r.ok).toBe(true)
     expect(r.value.saveInterval).toBe(60)
     expect(r.value.defaultKind).toBe('TODO')
+    expect(r.value.resumeDraft).toBe(false)
   })
   it('拒绝非法值并保留原值', async () => {
     await handler('config', { saveInterval: 60 })
@@ -100,6 +101,23 @@ describe('save / new / clear / read', () => {
     const second = await handler('save', { kind: '点子', content: '不变' })
     expect(first.value.changed).toBe(true)
     expect(second.value.changed).toBe(false)
+  })
+  it('只恢复当前草稿，显式新建后不再返回旧内容', async () => {
+    await handler('new', {})
+    const saved = await handler('save', { kind: '感想', content: '下次继续写这一条' })
+    expect(saved.ok).toBe(true)
+    expect(JSON.parse(await readFile(join(HOME, 'sticky-note-draft.json'), 'utf8'))).toEqual({ kind: '感想', name: saved.value.name })
+    const draft = await handler('draft', {})
+    expect(draft.value).toMatchObject({ kind: '感想', name: saved.value.name, content: '下次继续写这一条' })
+    await handler('new', {})
+    expect((await handler('draft', {})).value).toBeNull()
+  })
+  it('当前草稿文件不存在时安全回到空白并清理失效指针', async () => {
+    await handler('new', {})
+    const saved = await handler('save', { kind: '点子', content: '稍后会移动' })
+    await rm(join(ROOT, '点子', saved.value.name), { force: true })
+    expect((await handler('draft', {})).value).toBeNull()
+    await expect(readFile(join(HOME, 'sticky-note-draft.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
   })
   it('并发保存后清空不会让旧草稿复活', async () => {
     await handler('new', {})

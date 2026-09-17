@@ -69,6 +69,13 @@ describe('面板布局', () => {
     expect(source).toContain('if (!open || pinned) return')
     expect(source).toContain("'aria-label': pinned ? '取消固定便签' : '固定便签'")
   })
+
+  it('续写选项默认关闭，仅开启时请求当前草稿', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).toContain("const [resumeDraft, setResumeDraft] = React.useState(false)")
+    expect(source).toContain("rpc('draft', {})")
+    expect(source).toContain("{ value: true, label: '继续上次草稿' }")
+  })
 })
 
 describe('标题栏操作', () => {
