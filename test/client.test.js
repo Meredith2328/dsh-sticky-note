@@ -51,6 +51,24 @@ describe('面板布局', () => {
     expect(client.parsePanelLayout('{bad json')).toEqual({ x: null, y: null, width: 280, height: 330 })
     expect(client.parsePanelLayout('{"x":"bad","y":9,"width":0,"height":99999}')).toEqual({ x: null, y: null, width: 280, height: 330 })
   })
+
+  it('固定模式把面板吸附到最近的左右边缘', () => {
+    expect(client.snapPanelLayout(
+      { x: 100, y: 60, width: 280, height: 330 },
+      { width: 1200, height: 800 },
+    )).toEqual({ x: 4, y: 60, width: 280, height: 330 })
+    expect(client.snapPanelLayout(
+      { x: 850, y: 60, width: 280, height: 330 },
+      { width: 1200, height: 800 },
+    )).toEqual({ x: 916, y: 60, width: 280, height: 330 })
+  })
+
+  it('默认未固定，固定状态从本地持久化恢复', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).toContain("localStorage.getItem(PANEL_PINNED_KEY) === 'true'")
+    expect(source).toContain('if (!open || pinned) return')
+    expect(source).toContain("'aria-label': pinned ? '取消固定便签' : '固定便签'")
+  })
 })
 
 describe('标题栏操作', () => {
