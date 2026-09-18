@@ -21,16 +21,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Test diagnostic parser
-        run: node --test .github/scripts/issue-diagnostics.node-test.mjs
+          cache: npm
 
       - name: Run repository baseline
         id: baseline
         continue-on-error: true
         run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          npx --yes vitest@3.2.4 run test/index.test.js
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run check
 
       - name: Build evidence report
         env:
