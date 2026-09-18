@@ -7,6 +7,11 @@
   "email": "111104745+Meredith2328@users.noreply.github.com",
   "type": "module",
   "main": "lib/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:automation": "node --test .github/scripts/*.node-test.mjs",
+    "check": "npm run test:automation && npm test"
+  },
   "exports": {
     ".": {
       "default": "./lib/index.js"
@@ -54,6 +59,9 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "devDependencies": {
+    "vitest": "3.2.4"
   },
   "files": [
     "lib",

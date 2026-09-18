@@ -57,6 +57,10 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 默认根路径 `~/.dsh/sticky-notes`（`DSH_HOME` 下），可在设置页修改。
 
+## 🤝 贡献
+
+外部贡献采用先 Issue、后 PR 的流程。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)；未经确认的 PR 暂不进入人工代码审查。
+
 ## 📄 License
 
 MIT
