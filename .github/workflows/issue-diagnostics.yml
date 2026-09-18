@@ -30,7 +30,7 @@ jobs:
         continue-on-error: true
         run: |
           npm install --ignore-scripts --no-audit --no-fund
-          npx --yes vitest@3.2.4 run test/index.test.js
+          npx --yes vitest@3.2.4 run test/index.test.js test/rpc-auth-boundary.test.js
 
       - name: Build evidence report
         env:
