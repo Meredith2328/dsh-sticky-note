@@ -156,17 +156,39 @@ describe('底部栏与缩放手柄', () => {
     return source.slice(start, source.indexOf('}', start))
   }
 
-  it('底部三个控件同高同字号，中线才对得齐', async () => {
+  it('底部三列等宽等高同形状，缩放面板时一致伸缩', async () => {
     const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    // 三列等分：面板变宽变窄时三个控件始终同宽，列间距固定
+    const bar = blockOf(source, '.sn-bar {')
+    expect(bar).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    expect(bar).toContain('gap: 8px')
     for (const selector of ['.sn-send {', '.sn-iconbtn {', '.sn-badge {']) {
       const block = blockOf(source, selector)
       expect(block).toContain('height: 28px')
+      expect(block).toContain('width: 100%')
+      expect(block).toContain('min-width: 0')
+      expect(block).toContain('border-radius: 10px')
       expect(block).toContain('box-sizing: border-box')
       expect(block).toContain('font-size: 12.5px')
       expect(block).toContain('align-items: center')
     }
-    // 列表页中间那个文件夹按钮同样按 28px 走
-    expect(blockOf(source, '.sn-openfolder {')).toContain('height: 28px')
+    // 列表页中间那个文件夹按钮同样撑满自己那一列
+    const folder = blockOf(source, '.sn-openfolder {')
+    expect(folder).toContain('width: 100%')
+    expect(folder).toContain('height: 28px')
+  })
+
+  it('右上角展开菜单在窄面板下换行，不顶出面板', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    const pop = blockOf(source, '.sn-head-actions-pop {')
+    expect(pop).toContain('flex-wrap: wrap')
+    expect(pop).toContain('justify-content: flex-end')
+    expect(pop).toContain('max-width: calc(100% - 16px)')
+    // 倍率要放得下三位数 + 百分号，且不能被 .sn-mini 的 22px 盖掉
+    const zoomValue = blockOf(source, '.sn-mini.sn-zoom-value {')
+    expect(zoomValue).toContain('width: 40px')
+    expect(zoomValue).toContain('min-width: 40px')
+    expect(source.match(/\.sn-zoom-value \{/g)).toHaveLength(1)
   })
 
   it('右下角不再画缩放手柄，但拖拽热区还在', async () => {
