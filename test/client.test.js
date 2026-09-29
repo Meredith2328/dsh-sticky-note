@@ -133,6 +133,52 @@ describe('标题栏操作', () => {
     expect(source).not.toContain('sn-drag-grip')
     expect(source).toContain("className: 'sn-head', title: '拖动便签'")
   })
+
+  it('主页是新建，历史清单与查看单条时同一个按钮换字形变成返回', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(client.headPrimaryAction('edit', null)).toBe('new')
+    expect(client.headPrimaryAction('list', null)).toBe('list-back')
+    expect(client.headPrimaryAction('edit', { kind: '点子', name: 'x.md' })).toBe('note-back')
+    // 两枚字形叠在同一个按钮里，切换靠 CSS 过渡（＋ 旋转淡出、← 旋转淡入）
+    expect(source).toContain("className: 'sn-plus' + (atHome ? '' : ' sn-plus-back')")
+    expect(source).toContain("className: 'sn-glyph sn-glyph-plus'")
+    expect(source).toContain("className: 'sn-glyph sn-glyph-back'")
+    expect(source).toContain('.sn-plus.sn-plus-back .sn-glyph-back { transform: none; opacity: 1; }')
+    expect(source).toContain("if (headAction === 'note-back') { setViewNote(null); return }")
+    // 历史清单页的右上角菜单不再放「返回当前」，返回统一走左上角
+    expect(source).not.toContain('← 返回当前')
+  })
+})
+
+describe('底部栏与缩放手柄', () => {
+  const blockOf = (source, selector) => {
+    const start = source.indexOf(selector)
+    return source.slice(start, source.indexOf('}', start))
+  }
+
+  it('底部三个控件同高同字号，中线才对得齐', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    for (const selector of ['.sn-send {', '.sn-iconbtn {', '.sn-badge {']) {
+      const block = blockOf(source, selector)
+      expect(block).toContain('height: 28px')
+      expect(block).toContain('box-sizing: border-box')
+      expect(block).toContain('font-size: 12.5px')
+      expect(block).toContain('align-items: center')
+    }
+    // 列表页中间那个文件夹按钮同样按 28px 走
+    expect(blockOf(source, '.sn-openfolder {')).toContain('height: 28px')
+  })
+
+  it('右下角不再画缩放手柄，但拖拽热区还在', async () => {
+    const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+    expect(source).not.toContain('.sn-rz-corner::after')
+    const block = blockOf(source, '.sn-rz-corner {')
+    expect(block).toContain('cursor: nwse-resize')
+    expect(block).toContain('width: 26px')
+    expect(block).toContain('background: transparent')
+    // 面板仍挂着缩放入口
+    expect(source).toContain("onPointerDown: (e) => onPanelPointerDown(e, 'resize')")
+  })
 })
 
 describe('DSH 0.2.0 客户端接缝', () => {
