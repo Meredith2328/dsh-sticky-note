@@ -129,6 +129,9 @@ describe('标题栏操作', () => {
     expect(source).toContain("className: 'sn-head-actions-pop'")
     expect(source).toContain("'aria-label': '展开标题栏操作'")
     expect(source).toContain('if (headActionsOpen) { setHeadActionsOpen(false); return }')
+    // 标题栏不再显示拖动图标，拖动仍由标题栏本身的 onPointerDown 承接
+    expect(source).not.toContain('sn-drag-grip')
+    expect(source).toContain("className: 'sn-head', title: '拖动便签'")
   })
 })
 
