@@ -1,10 +1,10 @@
 # dsh-sticky-note
 
-[![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.7_~_0.1.6--alpha.2-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.6-alpha.2)
+[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2)
 
 左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
-> 适配 DSH `0.1.0-rc.7` ~ `0.1.6-alpha.2`：最低要求 `0.1.0-rc.7`（设置卡片 keyed slot 强校验），最高已验证 `0.1.6-alpha.2`。
+> 适配 DSH `0.2.0-rc.2`：用户配置改用插件自己的 `Config`（volatile 字段写回 profile patch），设置卡片继续挂在插件管理器的详情页。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
@@ -42,7 +42,13 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 > 请不要使用裸包名 `dsh plugin ... add dsh-sticky-note`；npm 上的同名包不是本项目。
 
-**版本要求**：需要 DSH `0.1.0-rc.7` 及以上（设置卡片注册适配 keyed slot 强校验），已验证兼容至 `0.1.6-alpha.2`；旧版 DSH 请使用 v0.2.1。v0.2.4 移除了 `0.1.6` 已删除的 `settingsNamespace` 辅助函数，在顶层声明 Loader 必需服务，把设置卡片迁到新版插件详情页，并让定时清理跟随插件热卸载生命周期。
+**版本对应关系**：
+
+- 便签 v0.6.0 → DSH `0.2.0-rc.2`
+- 便签 v0.5.0 → DSH `0.1.6-alpha.2`
+- 便签 v0.2.3 → DSH `0.1.0-rc.7` ~ `0.1.1-rc.2`
+
+v0.6.0 的适配集中在配置的存取接缝上。`@deepseek-ai/dsh-settings` 不再提供 `ctx.settings.register(namespace, schema)`：插件改成导出自己的 `Config`，把用户可改的字段标成 `.volatile()`，Loader 解析后作为 `apply(ctx, config)` 的第二参数下发，字段是带 `.get()` 的引用，设置表单与 profile patch 都按这份 schema 走；写回改用 `ctx.settings.update(条目 id, patch)`，并通过 `ctx.settings.configure({ auto: false }, ctx.fiber)` 说明设置页由插件自己的卡片渲染。同时 `connection.rpc.handle` 只收 `(channel, handler)`，旧的 `{ authority: 'loopback' }` 选项已经不存在；`settings.plugin.item` 插槽在 0.2.0 里没有声明，旧的兜底注册一并删除。读不到 settings 服务时（例如测试直连 handler）仍旧退回 `~/.dsh/sticky-note-config.json`。
 
 ## 🗂️ 存储结构
 
