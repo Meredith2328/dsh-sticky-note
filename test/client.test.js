@@ -13,7 +13,10 @@ beforeAll(async () => {
     },
   }
   await import('../lib/client.js')
-  client = definition.factory(() => ({}))
+  // 只需要能构造 React 元素（{ type, props }），不渲染
+  client = definition.factory((name) => name === 'react'
+    ? { createElement: (type, props) => ({ type, props }), Fragment: 'Fragment' }
+    : {})
 })
 
 afterAll(() => {
@@ -126,5 +129,76 @@ describe('标题栏操作', () => {
     expect(source).toContain("className: 'sn-head-actions-pop'")
     expect(source).toContain("'aria-label': '展开标题栏操作'")
     expect(source).toContain('if (headActionsOpen) { setHeadActionsOpen(false); return }')
+  })
+})
+
+describe('DSH 0.2.0 客户端接缝', () => {
+  // 用一个最小的 Cordis 客户端上下文跑 apply：只记录它注册到 slots/connection 的形状
+  function fakeCtx(calls) {
+    const injected = []
+    const registrations = []
+    const styles = []
+    const rpc = {
+      call: (...args) => {
+        calls.push(args)
+        return calls.length === 1
+          ? Promise.reject(new Error('no /api fetch route'))
+          : Promise.resolve({ ok: true, value: { ok: true } })
+      },
+    }
+    const ctx = {
+      get: (name) => ({ connection: { rpc }, slots: {
+        inject: (key, callback) => { injected.push(key); callback(); return () => {} },
+        register: (options, component) => { registrations.push([options, component]); return () => {} },
+      }, uiWorkspace: { pickDirectory: () => Promise.resolve('') } })[name],
+      effect: (fn) => { const dispose = fn(); styles.push(dispose); return () => { if (typeof dispose === 'function') dispose() } },
+    }
+    return { ctx, injected, registrations, styles }
+  }
+
+  it('注册输入栏与插件详情页两个插槽', () => {
+    const previousDocument = globalThis.document
+    globalThis.document = {
+      getElementById: () => null,
+      createElement: () => ({ id: '', textContent: '', remove() {} }),
+      head: { appendChild() {} },
+    }
+    const calls = []
+    const { ctx, injected, registrations, styles } = fakeCtx(calls)
+    try {
+      client.apply(ctx)
+      expect(injected).toEqual(['conversation.input.left', 'plugins.bundle.config'])
+      expect(registrations[0][0]).toEqual({ name: 'conversation.input.left', id: 'sticky-note', order: 20 })
+      // 详情页 keyed slot 的 key 必须是包名，插件管理器按 entryKey 派发
+      expect(registrations[1][0]).toEqual({ name: 'plugins.bundle.config', key: 'dsh-sticky-note' })
+      // 只有 page 视图返回设置卡片，行内视图不占位
+      expect(registrations[1][1]({ view: 'row' })).toBeNull()
+      expect(registrations[1][1]({ view: 'page' })).toBeTruthy()
+      expect(typeof styles[0]).toBe('function')
+    } finally {
+      globalThis.document = previousDocument
+    }
+  })
+
+  it('配置读写优先走 /api 精确路由，失败退回独立 RPC channel', async () => {
+    const previousDocument = globalThis.document
+    globalThis.document = {
+      getElementById: () => null,
+      createElement: () => ({ id: '', textContent: '', remove() {} }),
+      head: { appendChild() {} },
+    }
+    const calls = []
+    const { ctx, registrations } = fakeCtx(calls)
+    try {
+      client.apply(ctx)
+      const zone = registrations[0][1]({ inputActions: {}, useInput: () => '' })
+      await zone.props.rpc('config', { saveInterval: 60 })
+      expect(calls[0]).toEqual(['/api', 'dsh-sticky-note/call', { endpoint: 'config', payload: { saveInterval: 60 } }])
+      expect(calls[1]).toEqual(['/dsh-sticky-note', 'config', { saveInterval: 60 }])
+      await zone.props.rpc('list', {})
+      expect(calls[2]).toEqual(['/api', 'dsh-sticky-note/call', { endpoint: 'list', payload: {} }])
+    } finally {
+      globalThis.document = previousDocument
+    }
   })
 })

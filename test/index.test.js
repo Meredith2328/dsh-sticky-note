@@ -7,13 +7,24 @@ import { join } from 'node:path'
 const HOME = await mkdtemp(join(tmpdir(), 'sn-test-'))
 process.env.DSH_HOME = HOME
 
-const { handler, inject } = await import('../lib/index.js')
+const { handler, inject, Config, apply } = await import('../lib/index.js')
 
 const ROOT = join(HOME, 'notes')
 
-describe('DSH 插件声明', () => {
-  it('在顶层声明 0.1.6 Loader 需要的宿主服务', () => {
-    expect(inject).toEqual(['connection', 'settings'])
+describe('DSH 0.2.0 插件声明', () => {
+  it('顶层只硬依赖 connection，settings 在 apply 里可选接入', () => {
+    expect(inject).toEqual(['connection'])
+  })
+  it('导出 0.2.0 表单识别的 Config：全部用户字段都是 volatile', () => {
+    expect(Object.keys(Config.dict)).toEqual([
+      'root', 'viewMode', 'saveInterval', 'clearAfter', 'defaultKind', 'sendMode', 'resumeDraft',
+    ])
+    for (const field of Object.values(Config.dict)) expect(field.meta.volatile).toBe(true)
+    // Loader 解析后的字段是带 .get() 的引用，缺省时给出插件默认值
+    const resolved = Config({})
+    expect(resolved.root.get()).toBe(join(HOME, 'sticky-notes'))
+    expect(resolved.viewMode.get()).toBe('inline')
+    expect(resolved.resumeDraft.get()).toBe(false)
   })
   it('在浏览器包声明可见服务并使用新版目录选择服务', async () => {
     const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
@@ -21,8 +32,121 @@ describe('DSH 插件声明', () => {
     expect(source).toContain("ctx.get('uiWorkspace')")
     expect(source).toContain("slots.inject('plugins.bundle.config'")
     expect(source).toContain("key: 'dsh-sticky-note'")
-    expect(source).toContain("slots.inject('settings.plugin.item'")
+    // 0.2.0 没有声明 settings.plugin.item，旧兜底注册不应再出现
+    expect(source).not.toContain('settings.plugin.item')
     expect(source).not.toContain("ctx.get('workspaces')")
+  })
+})
+
+// apply 需要一个最小的 Cordis 上下文：记录它注册的 RPC 接缝、设置的写入与页面策略
+function fakeContext({ updates, policies }) {
+  const fiber = { entry: { options: { id: 'dsh-sticky-note' } } }
+  const disposers = []
+  const routes = []
+  const handles = []
+  const settings = {
+    async update(ns, patch) { updates.push([ns, patch]) },
+    configure(policy, owner) { policies.push([policy, owner]); return () => {} },
+  }
+  const effect = (fn, label) => {
+    // 定时清理是 Host 的整点任务，单测只关心它跟随 fiber 卸载，不在这里真的起线程
+    if (label === 'dsh-sticky-note: cleanup timer') {
+      disposers.push(() => {})
+      return () => {}
+    }
+    const dispose = fn()
+    disposers.push(dispose)
+    return () => { if (typeof dispose === 'function') dispose() }
+  }
+  const ctx = {
+    fiber,
+    connection: {
+      fetch: { register(route) { routes.push(route); return () => {} } },
+      rpc: { handle(...args) { handles.push(args); return () => {} } },
+    },
+    inject(deps, callback) { callback({ settings, effect }); return () => {} },
+    get() { return undefined },
+    effect,
+  }
+  return { ctx, disposers, routes, handles }
+}
+
+function configRefs(overrides = {}) {
+  const values = {
+    root: ROOT, viewMode: 'inline', saveInterval: 10, clearAfter: 0,
+    defaultKind: '点子', sendMode: 'send', resumeDraft: false,
+    ...overrides,
+  }
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { get: () => value }]))
+}
+
+function disposeAll(disposers) {
+  for (const dispose of disposers) if (typeof dispose === 'function') dispose()
+}
+
+describe('settings 接缝', () => {
+  it('读配置看 Config 引用，写配置走 settings.update(条目 id, patch)', async () => {
+    const updates = []
+    const policies = []
+    const { ctx, disposers, routes } = fakeContext({ updates, policies })
+    try {
+      apply(ctx, configRefs({ viewMode: 'file' }))
+      // 精确 Fetch route 是 0.2.0 的 /api 分流入口
+      expect(routes).toHaveLength(1)
+      expect(routes[0]).toMatchObject({ path: '/api/dsh-sticky-note/call', methods: ['POST'], requestBody: 'buffered' })
+      // 设置页由插件自己的卡片渲染，不让 DSH 自动生成表单
+      expect(policies).toEqual([[{ auto: false }, ctx.fiber]])
+      // 读：直接投影 Config 引用
+      expect((await handler('config', {})).value.viewMode).toBe('file')
+      // 写：整份配置交给 settings.update
+      const written = await handler('config', { saveInterval: 60 })
+      expect(written.value.saveInterval).toBe(60)
+      expect(updates).toEqual([['dsh-sticky-note', {
+        root: ROOT, viewMode: 'file', saveInterval: 60, clearAfter: 0,
+        defaultKind: '点子', sendMode: 'send', resumeDraft: false,
+      }]])
+    } finally {
+      disposeAll(disposers)
+    }
+    // 卸载后回到 JSON 回退路径
+    expect((await handler('config', {})).value.viewMode).toBe('inline')
+  })
+
+  it('没有 /api 分流接缝时回退到 (channel, handler) 两参数的 RPC channel', () => {
+    const updates = []
+    const policies = []
+    const { ctx, disposers, handles } = fakeContext({ updates, policies })
+    delete ctx.connection.fetch
+    try {
+      apply(ctx, configRefs())
+      expect(handles).toEqual([['/dsh-sticky-note', handler]])
+    } finally {
+      disposeAll(disposers)
+    }
+  })
+
+  it('精确 Fetch route 的返回信封满足 0.2.0 客户端的强校验', async () => {
+    const updates = []
+    const policies = []
+    const { ctx, disposers, routes } = fakeContext({ updates, policies })
+    const call = (payload) => routes[0].fetch(new Request('http://127.0.0.1/api/dsh-sticky-note/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'client-request', rpcId: 'r1', method: 'dsh-sticky-note/call', payload }),
+    })).then((response) => response.json())
+    try {
+      apply(ctx, configRefs())
+      const ok = await call({ endpoint: 'config', payload: {} })
+      expect(ok).toMatchObject({ type: 'server-response', rpcId: 'r1', result: { ok: true } })
+      // 失败信封必须有字符串 message 与对象 details，否则客户端只会拿到一个 TypeError
+      const bad = await call({ endpoint: '不存在', payload: {} })
+      expect(bad.type).toBe('server-response')
+      expect(typeof bad.result.error.code).toBe('string')
+      expect(typeof bad.result.error.message).toBe('string')
+      expect(bad.result.error.details).toBeTypeOf('object')
+    } finally {
+      disposeAll(disposers)
+    }
   })
 })
 
