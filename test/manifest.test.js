@@ -28,10 +28,14 @@ describe('DSH 0.2.1-rc.5 manifest', () => {
     }
   })
 
-  it('peer 范围覆盖兼容基线，基线文件跟着走', async () => {
+  it('声明机器可读的 DSH 兼容范围，基线落在范围内', async () => {
     const baseline = (await readFile(new URL('../.dsh-baseline', import.meta.url), 'utf8')).trim()
+    expect(manifest.engines).toEqual({ dsh: '>=0.2.0-rc.2 <0.3.0-0' })
     expect(baseline).toBe('0.2.1-rc.5')
-    // 插件管理器按运行时版本校验 @deepseek-ai/dsh-* 的 peer 范围，范围不合会直接挡安装
+  })
+
+  it('保留旧版 DSH 的 peer 兼容检查入口', () => {
+    // DSH 0.2.0 还没有 engines.dsh 优先规则，会回退检查 DSH peer 范围
     expect(manifest.peerDependencies['@deepseek-ai/dsh-settings']).toBe('^0.2.0-rc.2')
   })
 

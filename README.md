@@ -4,7 +4,7 @@
 
 左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
-> 兼容 DSH `0.2.1-rc.5`（已在隔离 profile 中实测）：当前版本无需修改插件代码。用户配置仍由插件自己的 `Config`（volatile 字段写回 profile patch）承载，设置卡片继续挂在插件管理器的详情页。
+> 当前版本 **v0.6.1** 兼容 DSH `0.2.x`（最低 `0.2.0-rc.2`，最新实测 `0.2.1-rc.5`）。包内已声明机器可读的 `engines.dsh` 范围，DSH 会在安装/加载前自动做兼容性检查；便签设置仍由插件 `Config` 自动写入当前 profile patch。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
@@ -42,13 +42,28 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 > 请不要使用裸包名 `dsh plugin ... add dsh-sticky-note`；npm 上的同名包不是本项目。
 
-**版本对应关系**：
+## 🧩 版本对应与自动兼容
 
-- 便签 v0.6.0 → DSH `0.2.1-rc.5`（已验证；`0.2.0-rc.2` 继续保持兼容）
-- 便签 v0.5.0 → DSH `0.1.6-alpha.2`
-- 便签 v0.2.3 → DSH `0.1.0-rc.7` ~ `0.1.1-rc.2`
+安装前可先运行 `dsh --version`，再按实际 DSH 版本选择插件：
 
-v0.6.0 的配置存取接缝在 DSH `0.2.1-rc.5` 中继续成立：插件导出自己的 `Config`，把用户可改的字段标成 `.volatile()`，Loader 解析后作为 `apply(ctx, config)` 的第二参数下发；写回仍使用 `ctx.settings.update(条目 id, patch)`，并通过 `ctx.settings.configure({ auto: false }, ctx.fiber)` 由插件自己的卡片渲染设置页。`connection.rpc.handle(channel, handler)`、客户端注入和 `plugins.bundle.config` 插槽也保持可用。读不到 settings 服务时（例如测试直连 handler）仍旧退回 `~/.dsh/sticky-note-config.json`。
+| 便签版本 | 支持的 DSH 版本 | 建议 | 说明 |
+|---|---|---|---|
+| **v0.6.1（当前）** | `0.2.x`，最低 `0.2.0-rc.2` | ✅ 推荐 | 已验证至 `0.2.1-rc.5`；声明 `engines.dsh`，由 DSH 自动拦截不兼容版本 |
+| v0.6.0 | `0.2.x`，最低 `0.2.0-rc.2` | 可用 | 已验证 `0.2.0-rc.2` 和 `0.2.1-rc.5`；未声明 `engines.dsh` |
+| v0.5.0 / v0.2.4 | `0.1.0-rc.7` ~ `0.1.6-alpha.2` | 旧版 DSH | 使用旧版 settings 接缝，不兼容 DSH `0.2.x` |
+| v0.2.2 ~ v0.2.3 | `0.1.0-rc.7` ~ `0.1.1-rc.2` | 旧版 DSH | 仅用于更早的 DSH 环境 |
+
+当前 `v0.6.1` 的机器可读范围为：
+
+```json
+"engines": {
+  "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+}
+```
+
+上面的上界包含用于排除 `0.3.0` 预发布版的技术哨兵，实际含义是“只接受 `0.2.x`”。DSH `0.2.1` 及以后会优先读取这个字段；不匹配时，插件管理器会在导入插件代码前拒绝安装或加载。DSH `0.2.0` 仍可回退使用 `peerDependencies` 中的版本范围。因此正常使用匹配版本时，不需要手工修改 `package.json` 或 profile 配置。
+
+首次加载时，设置值来自插件的 `Config` 默认值；用户保存设置后，插件会自动把条目以 `dsh-sticky-note` 为 id 写入当前 profile 的 `cordis.patch.yml`。Read/Write、RPC 和插件详情页配置插槽继续沿用 DSH `0.2` 的接口。
 
 本次兼容性检查在全新的 DSH `0.2.1-rc.5` Web profile 中完成：插件可安装并正常加载，便签按钮和面板可用，保存后重新打开能读回内容，设置页读写会正确落到 profile patch；浏览器控制台、页面脚本和 HTTP 请求均无报错。仓库的自动化测试也全部通过。
 
