@@ -1,10 +1,10 @@
 # dsh-sticky-note
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.0--rc.2-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2)
+[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.5-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.5)
 
 左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
-> 适配 DSH `0.2.0-rc.2`：用户配置改用插件自己的 `Config`（volatile 字段写回 profile patch），设置卡片继续挂在插件管理器的详情页。
+> 兼容 DSH `0.2.1-rc.5`（已在隔离 profile 中实测）：当前版本无需修改插件代码。用户配置仍由插件自己的 `Config`（volatile 字段写回 profile patch）承载，设置卡片继续挂在插件管理器的详情页。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
@@ -44,11 +44,13 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 **版本对应关系**：
 
-- 便签 v0.6.0 → DSH `0.2.0-rc.2`
+- 便签 v0.6.0 → DSH `0.2.1-rc.5`（已验证；`0.2.0-rc.2` 继续保持兼容）
 - 便签 v0.5.0 → DSH `0.1.6-alpha.2`
 - 便签 v0.2.3 → DSH `0.1.0-rc.7` ~ `0.1.1-rc.2`
 
-v0.6.0 的适配集中在配置的存取接缝上。`@deepseek-ai/dsh-settings` 不再提供 `ctx.settings.register(namespace, schema)`：插件改成导出自己的 `Config`，把用户可改的字段标成 `.volatile()`，Loader 解析后作为 `apply(ctx, config)` 的第二参数下发，字段是带 `.get()` 的引用，设置表单与 profile patch 都按这份 schema 走；写回改用 `ctx.settings.update(条目 id, patch)`，并通过 `ctx.settings.configure({ auto: false }, ctx.fiber)` 说明设置页由插件自己的卡片渲染。同时 `connection.rpc.handle` 只收 `(channel, handler)`，旧的 `{ authority: 'loopback' }` 选项已经不存在；`settings.plugin.item` 插槽在 0.2.0 里没有声明，旧的兜底注册一并删除。读不到 settings 服务时（例如测试直连 handler）仍旧退回 `~/.dsh/sticky-note-config.json`。
+v0.6.0 的配置存取接缝在 DSH `0.2.1-rc.5` 中继续成立：插件导出自己的 `Config`，把用户可改的字段标成 `.volatile()`，Loader 解析后作为 `apply(ctx, config)` 的第二参数下发；写回仍使用 `ctx.settings.update(条目 id, patch)`，并通过 `ctx.settings.configure({ auto: false }, ctx.fiber)` 由插件自己的卡片渲染设置页。`connection.rpc.handle(channel, handler)`、客户端注入和 `plugins.bundle.config` 插槽也保持可用。读不到 settings 服务时（例如测试直连 handler）仍旧退回 `~/.dsh/sticky-note-config.json`。
+
+本次兼容性检查在全新的 DSH `0.2.1-rc.5` Web profile 中完成：插件可安装并正常加载，便签按钮和面板可用，保存后重新打开能读回内容，设置页读写会正确落到 profile patch；浏览器控制台、页面脚本和 HTTP 请求均无报错。仓库的自动化测试也全部通过。
 
 ## 🗂️ 存储结构
 

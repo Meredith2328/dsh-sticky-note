@@ -8,8 +8,8 @@ async function hostSource() {
   return raw.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n')
 }
 
-describe('DSH 0.2.0-rc.2 manifest', () => {
-  it('只注入 0.2.0 里仍存在的动态客户端包', () => {
+describe('DSH 0.2.1-rc.5 manifest', () => {
+  it('只注入兼容基线里仍存在的动态客户端包', () => {
     expect(manifest.dsh.client.inject).toEqual([
       '@deepseek-ai/dsh-client-connection',
       '@deepseek-ai/dsh-client-ui-conversation',
@@ -28,9 +28,9 @@ describe('DSH 0.2.0-rc.2 manifest', () => {
     }
   })
 
-  it('peer 范围只放行已适配的运行时，基线文件跟着走', async () => {
+  it('peer 范围覆盖兼容基线，基线文件跟着走', async () => {
     const baseline = (await readFile(new URL('../.dsh-baseline', import.meta.url), 'utf8')).trim()
-    expect(baseline).toBe('0.2.0-rc.2')
+    expect(baseline).toBe('0.2.1-rc.5')
     // 插件管理器按运行时版本校验 @deepseek-ai/dsh-* 的 peer 范围，范围不合会直接挡安装
     expect(manifest.peerDependencies['@deepseek-ai/dsh-settings']).toBe('^0.2.0-rc.2')
   })
