@@ -8,7 +8,7 @@ async function hostSource() {
   return raw.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n')
 }
 
-describe('DSH 0.2.1-rc.5 manifest', () => {
+describe('DSH 0.2.2-rc.1 manifest', () => {
   it('只注入兼容基线里仍存在的动态客户端包', () => {
     expect(manifest.dsh.client.inject).toEqual([
       '@deepseek-ai/dsh-client-connection',
@@ -31,7 +31,7 @@ describe('DSH 0.2.1-rc.5 manifest', () => {
   it('声明机器可读的 DSH 兼容范围，基线落在范围内', async () => {
     const baseline = (await readFile(new URL('../.dsh-baseline', import.meta.url), 'utf8')).trim()
     expect(manifest.engines).toEqual({ dsh: '>=0.2.0-rc.2 <0.3.0-0' })
-    expect(baseline).toBe('0.2.1-rc.5')
+    expect(baseline).toBe('0.2.2-rc.1')
   })
 
   it('保留旧版 DSH 的 peer 兼容检查入口', () => {

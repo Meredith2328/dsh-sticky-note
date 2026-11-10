@@ -1,10 +1,10 @@
 # dsh-sticky-note
 
-[![DSH](https://img.shields.io/badge/DSH-0.2.1--rc.5-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.5)
+[![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.1-4c6ef5)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.1)
 
 左下角便签：随手记点子 / 感想 / TODO，实时保存到归档目录，清单 + 悬浮归档。
 
-> 当前版本 **v0.6.1** 兼容 DSH `0.2.x`（最低 `0.2.0-rc.2`，最新实测 `0.2.1-rc.5`）。包内已声明机器可读的 `engines.dsh` 范围，DSH 会在安装/加载前自动做兼容性检查；便签设置仍由插件 `Config` 自动写入当前 profile patch。
+> 当前版本 **v0.6.1** 兼容 DSH `0.2.x`（最低 `0.2.0-rc.2`，最新实测 `0.2.2-rc.1`）。包内已声明机器可读的 `engines.dsh` 范围，DSH 会在安装/加载前自动做兼容性检查；便签设置仍由插件 `Config` 自动写入当前 profile patch。
 
 ![dsh-sticky-note 示意图](assets/screenshot.png)
 
@@ -48,7 +48,7 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 | 便签版本 | 支持的 DSH 版本 | 建议 | 说明 |
 |---|---|---|---|
-| **v0.6.1（当前）** | `0.2.x`，最低 `0.2.0-rc.2` | ✅ 推荐 | 已验证至 `0.2.1-rc.5`；声明 `engines.dsh`，由 DSH 自动拦截不兼容版本 |
+| **v0.6.1（当前）** | `0.2.x`，最低 `0.2.0-rc.2` | ✅ 推荐 | 已验证至 `0.2.2-rc.1`；声明 `engines.dsh`，由 DSH 自动拦截不兼容版本 |
 | v0.6.0 | `0.2.x`，最低 `0.2.0-rc.2` | 可用 | 已验证 `0.2.0-rc.2` 和 `0.2.1-rc.5`；未声明 `engines.dsh` |
 | v0.5.0 / v0.2.4 | `0.1.0-rc.7` ~ `0.1.6-alpha.2` | 旧版 DSH | 使用旧版 settings 接缝，不兼容 DSH `0.2.x` |
 | v0.2.2 ~ v0.2.3 | `0.1.0-rc.7` ~ `0.1.1-rc.2` | 旧版 DSH | 仅用于更早的 DSH 环境 |
@@ -65,7 +65,7 @@ dsh plugin --profile web add file:/path/to/dsh-sticky-note
 
 首次加载时，设置值来自插件的 `Config` 默认值；用户保存设置后，插件会自动把条目以 `dsh-sticky-note` 为 id 写入当前 profile 的 `cordis.patch.yml`。Read/Write、RPC 和插件详情页配置插槽继续沿用 DSH `0.2` 的接口。
 
-本次兼容性检查在全新的 DSH `0.2.1-rc.5` Web profile 中完成：插件可安装并正常加载，便签按钮和面板可用，保存后重新打开能读回内容，设置页读写会正确落到 profile patch；浏览器控制台、页面脚本和 HTTP 请求均无报错。仓库的自动化测试也全部通过。
+本次兼容性检查在全新的 DSH `0.2.2-rc.1` Web profile 中完成：插件安装后正常加载，客户端包 `dsh-sticky-note/client.js` 被正确注入，编辑框工具栏的便签按钮与面板可用，`/api/dsh-sticky-note/call` RPC 有响应；浏览器页面脚本、控制台和 HTTP 请求均无报错。接口层面逐项核对过：`settings.update` / `settings.configure`、`connection.fetch.register` 与 `connection.rpc.handle`、`conversation.input.left` 和 `plugins.bundle.config` 插槽在 0.2.2-rc.1 中均保持可用；Cordis 从 4.0.5 升到 4.1.0，本插件使用的 `ctx.effect`、`ctx.inject`、`ctx.fiber` 接口没有变化。该版本要求迁移的 `tools.resolve` / `executable`、提示词组装和 Session Projection 异步注册都不是本插件使用的接口，因此无需修改插件代码。仓库的自动化测试全部通过。
 
 ## 🗂️ 存储结构
 
